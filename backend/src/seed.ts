@@ -1,27 +1,24 @@
 import { PrismaClient } from '@prisma/client';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database with sample data...');
+  console.log('🌱 Starting database seed...');
 
-  // Sample products
+  // Create sample products
   const products = [
     {
-      name: 'Fresh Milk',
-      sku: 'MLK001',
+      name: 'Organic Milk',
+      sku: 'MILK001',
       category: 'Dairy',
-      description: 'Fresh whole milk from local farms',
+      description: 'Fresh organic whole milk',
       unit: 'L'
     },
     {
       name: 'Greek Yogurt',
       sku: 'YOG001',
       category: 'Dairy',
-      description: 'Natural Greek yogurt with probiotics',
+      description: 'Natural Greek yogurt',
       unit: 'L'
     },
     {
@@ -32,179 +29,140 @@ async function main() {
       unit: 'box'
     },
     {
-      name: 'Vitamin C',
+      name: 'Vitamin C Supplements',
       sku: 'VIT001',
       category: 'Pharmaceuticals',
-      description: 'Vitamin C supplements',
+      description: 'Vitamin C tablets 1000mg',
       unit: 'bottle'
     },
     {
-      name: 'Face Cream',
-      sku: 'CRM001',
-      category: 'Cosmetics',
-      description: 'Moisturizing face cream',
+      name: 'Hand Soap',
+      sku: 'SOAP001',
+      category: 'Personal Care',
+      description: 'Antibacterial hand soap',
+      unit: 'bottle'
+    },
+    {
+      name: 'Toothpaste',
+      sku: 'TOOTH001',
+      category: 'Personal Care',
+      description: 'Fluoride toothpaste',
       unit: 'tube'
     },
     {
-      name: 'Shampoo',
-      sku: 'SHP001',
-      category: 'Personal Care',
-      description: 'Hair care shampoo',
-      unit: 'bottle'
-    },
-    {
       name: 'Bread',
-      sku: 'BRD001',
+      sku: 'BREAD001',
       category: 'Food',
-      description: 'Fresh whole grain bread',
+      description: 'Whole grain bread',
       unit: 'loaf'
     },
     {
-      name: 'Cheese',
-      sku: 'CHS001',
-      category: 'Dairy',
-      description: 'Aged cheddar cheese',
-      unit: 'kg'
+      name: 'Eggs',
+      sku: 'EGG001',
+      category: 'Food',
+      description: 'Fresh farm eggs',
+      unit: 'dozen'
     }
   ];
 
-  // Create products
+  console.log('📦 Creating products...');
   for (const productData of products) {
-    const existingProduct = await prisma.product.findFirst({
-      where: { sku: productData.sku }
+    await prisma.product.upsert({
+      where: { sku: productData.sku },
+      update: {},
+      create: productData
     });
-
-    if (!existingProduct) {
-      await prisma.product.create({
-        data: productData
-      });
-      console.log(`✅ Created product: ${productData.name}`);
-    } else {
-      console.log(`⏭️  Product already exists: ${productData.name}`);
-    }
   }
 
-  // Get all products for inventory creation
+  // Get all products
   const allProducts = await prisma.product.findMany();
 
-  // Sample inventory items
-  const inventoryItems = [
-    {
-      productSku: 'MLK001',
-      batchNumber: 'MLK001-B001',
-      quantity: 100,
-      unitPrice: 2.50,
-      expiryDate: new Date('2024-02-15'),
-      location: 'Warehouse A'
-    },
-    {
-      productSku: 'YOG001',
-      batchNumber: 'YOG001-B001',
-      quantity: 50,
-      unitPrice: 3.00,
-      expiryDate: new Date('2024-02-10'),
-      location: 'Warehouse A'
-    },
-    {
-      productSku: 'ASP001',
-      batchNumber: 'ASP001-B001',
-      quantity: 200,
-      unitPrice: 5.00,
-      expiryDate: new Date('2025-12-31'),
-      location: 'Warehouse B'
-    },
-    {
-      productSku: 'VIT001',
-      batchNumber: 'VIT001-B001',
-      quantity: 150,
-      unitPrice: 12.00,
-      expiryDate: new Date('2025-06-30'),
-      location: 'Warehouse B'
-    },
-    {
-      productSku: 'CRM001',
-      batchNumber: 'CRM001-B001',
-      quantity: 75,
-      unitPrice: 15.50,
-      expiryDate: new Date('2024-08-15'),
-      location: 'Warehouse C'
-    },
-    {
-      productSku: 'SHP001',
-      batchNumber: 'SHP001-B001',
-      quantity: 80,
-      unitPrice: 8.50,
-      expiryDate: new Date('2024-06-30'),
-      location: 'Warehouse C'
-    },
-    {
-      productSku: 'BRD001',
-      batchNumber: 'BRD001-B001',
-      quantity: 60,
-      unitPrice: 3.50,
-      expiryDate: new Date('2024-01-20'),
-      location: 'Warehouse A'
-    },
-    {
-      productSku: 'CHS001',
-      batchNumber: 'CHS001-B001',
-      quantity: 40,
-      unitPrice: 8.00,
-      expiryDate: new Date('2024-03-15'),
-      location: 'Warehouse A'
-    }
-  ];
+  // Create sample inventory items
+  console.log('📦 Creating inventory items...');
+  for (const product of allProducts) {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + Math.floor(Math.random() * 30) + 7);
 
-  // Create inventory items
-  for (const itemData of inventoryItems) {
-    const product = allProducts.find(p => p.sku === itemData.productSku);
-    if (product) {
-      await prisma.inventoryItem.create({
-        data: {
-          productId: product.id,
-          batchNumber: itemData.batchNumber,
-          quantity: itemData.quantity,
-          unitPrice: itemData.unitPrice,
-          expiryDate: itemData.expiryDate,
-          location: itemData.location
-        }
-      });
-      console.log(`✅ Created inventory item: ${product.name} - ${itemData.batchNumber}`);
-    }
+    await prisma.inventoryItem.create({
+      data: {
+        productId: product.id,
+        batchNumber: `${product.sku}-B001`,
+        quantity: Math.floor(Math.random() * 200) + 50,
+        unitPrice: Math.random() * 10 + 2,
+        expiryDate,
+        location: `Warehouse ${String.fromCharCode(65 + Math.floor(Math.random() * 3))}`,
+        status: 'ACTIVE'
+      }
+    });
   }
 
-  // Create some sample alerts
-  const alertItems = [
-    {
-      productSku: 'MLK001',
-      type: 'EXPIRY_WARNING' as const,
-      message: 'Milk batch MLK001-B001 expires in 5 days',
-      severity: 'MEDIUM' as const
-    },
-    {
-      productSku: 'BRD001',
-      type: 'LOW_STOCK' as const,
-      message: 'Bread stock is running low',
-      severity: 'HIGH' as const
-    }
-  ];
-
-  for (const alertData of alertItems) {
-    const product = allProducts.find(p => p.sku === alertData.productSku);
-    if (product) {
-      await prisma.alert.create({
-        data: {
-          productId: product.id,
-          type: alertData.type,
-          message: alertData.message,
-          severity: alertData.severity
-        }
-      });
-      console.log(`✅ Created alert: ${alertData.message}`);
-    }
+  // Create sample alerts
+  console.log('🔔 Creating alerts...');
+  for (const product of allProducts.slice(0, 3)) {
+    await prisma.alert.create({
+      data: {
+        productId: product.id,
+        type: 'LOW_STOCK',
+        severity: 'MEDIUM',
+        message: `Low stock alert for ${product.name}`,
+        isRead: false,
+        isResolved: false
+      }
+    });
   }
 
-  console.log('🎉 Database seeding completed successfully!');
+  // Create sample promotions
+  console.log('🎯 Creating promotions...');
+  for (const product of allProducts.slice(0, 2)) {
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 30);
+
+    await prisma.promotion.create({
+      data: {
+        productId: product.id,
+        title: `Special Offer - ${product.name}`,
+        description: `Get 20% off on ${product.name}`,
+        discountPercentage: 20,
+        startDate,
+        endDate,
+        isActive: true
+      }
+    });
+  }
+
+  // Create sample pickups
+  console.log('🚚 Creating pickups...');
+  const pickupDate = new Date();
+  pickupDate.setDate(pickupDate.getDate() + 2);
+
+  const pickup = await prisma.pickup.create({
+    data: {
+      customerName: 'John Doe',
+      customerEmail: 'john@example.com',
+      customerPhone: '+1234567890',
+      pickupDate,
+      status: 'PENDING',
+      notes: 'Customer requested early pickup'
+    }
+  });
+
+  // Add items to pickup
+  const inventoryItems = await prisma.inventoryItem.findMany({
+    take: 2
+  });
+
+  for (const item of inventoryItems) {
+    await prisma.pickupItem.create({
+      data: {
+        pickupId: pickup.id,
+        inventoryItemId: item.id,
+        quantity: Math.floor(Math.random() * 10) + 1
+      }
+    });
+  }
+
+  console.log('✅ Database seed completed successfully!');
 }
 
 main()

@@ -31,9 +31,19 @@
     "express": "^5.1.0",
     "prisma": "^6.11.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "multer": "^1.4.5-lts.1",
+    "csv-parse": "^5.5.3",
+    "simple-statistics": "^7.8.3",
+    "ml-matrix": "^6.10.4",
+    "ml-regression": "^5.0.0",
+    "ml-regression-polynomial": "^2.1.0",
+    "ml-random-forest": "^2.1.0",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19"
+    "@types/cors": "^2.8.19",
+    "@types/multer": "^1.4.11",
+    "@types/uuid": "^9.0.7"
   }
 }

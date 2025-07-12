@@ -184,6 +184,18 @@ class ApiService {
   async healthCheck(): Promise<{ status: string; message: string }> {
     return this.request<{ status: string; message: string }>('/health');
   }
+
+  // ML System
+  async get(endpoint: string): Promise<any> {
+    return this.request<any>(endpoint);
+  }
+
+  async post(endpoint: string, data?: any): Promise<any> {
+    return this.request<any>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
 }
 
 export const apiService = new ApiService(); 

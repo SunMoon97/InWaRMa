@@ -27,6 +27,8 @@ model Product {
   inventoryItems InventoryItem[]
   alerts         Alert[]
   promotions     Promotion[]
+  orderPredictions OrderPrediction[]
+  banditArms     BanditArm[]
 
   @@map("products")
 }
@@ -117,6 +119,73 @@ model PickupItem {
   inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
 
   @@map("pickup_items")
+}
+
+// Multi-Armed Bandit System Models
+model OrderPrediction {
+  id            String   @id @default(cuid())
+  productId     String
+  predictedQuantity Float
+  predictedOrderDate DateTime
+  confidence    Float   // 0-1 confidence score
+  algorithm     String  // "polynomial", "bandit", "hybrid"
+  features      Json    // Stored features used for prediction
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_predictions")
+}
+
+model BanditArm {
+  id            String   @id @default(cuid())
+  productId     String
+  armType       String   // "conservative", "aggressive", "balanced", "seasonal"
+  parameters    Json     // Arm-specific parameters
+  rewardHistory Json     // Array of historical rewards
+  pullCount     Int      @default(0)
+  totalReward   Float    @default(0)
+  averageReward Float    @default(0)
+  explorationRate Float  @default(0.1)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("bandit_arms")
+}
+
+model OrderHistory {
+  id            String   @id @default(cuid())
+  productId     String
+  orderDate     DateTime
+  orderQuantity Float
+  actualDemand  Float    // Actual demand after order
+  leadTime      Int      // Days from order to arrival
+  cost          Float
+  revenue       Float?
+  profit        Float?
+  seasonality   String?  // "spring", "summer", "fall", "winter"
+  externalFactors Json?  // Weather, events, etc.
+  createdAt     DateTime @default(now())
+
+  @@map("order_history")
+}
+
+model DemandForecast {
+  id            String   @id @default(cuid())
+  productId     String
+  forecastDate  DateTime
+  predictedDemand Float
+  confidence    Float
+  modelType     String   // "polynomial", "seasonal", "trend"
+  features      Json
+  createdAt     DateTime @default(now())
+
+  @@map("demand_forecasts")
 }
 
 enum ItemStatus {

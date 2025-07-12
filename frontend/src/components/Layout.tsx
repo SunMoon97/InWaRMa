@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Settings,
-  User
+  User,
+  Brain
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -24,6 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Inventory', href: '/inventory', icon: Package },
+    { name: 'AI Predictions', href: '/ai-predictions', icon: Brain },
     { name: 'Alerts', href: '/alerts', icon: Bell },
     { name: 'Promotions', href: '/promotions', icon: Megaphone },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },

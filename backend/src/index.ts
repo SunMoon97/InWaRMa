@@ -6,6 +6,7 @@ import multer from 'multer';
 import { parse } from 'csv-parse';
 import fs from 'fs';
 import { Request } from 'express';
+import mlRoutes from './ml/api';
 
 // Load environment variables
 dotenv.config();
@@ -17,6 +18,9 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ML Routes
+app.use('/api/ml', mlRoutes);
 
 // Multer setup for file uploads
 const upload = multer({ dest: 'uploads/' });
