@@ -3,9 +3,8 @@
   "version": "1.0.0",
   "description": "Backend API for InWaRMa - Intelligent Warehouse Resource Management",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --esm src/index.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
