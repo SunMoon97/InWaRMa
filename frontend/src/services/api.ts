@@ -166,6 +166,20 @@ class ApiService {
     return this.request<Analytics>('/analytics');
   }
 
+  // Upload CSV file
+  async uploadCSV(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return this.request('/upload-csv', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        // Don't set Content-Type, let the browser set it with boundary
+      }
+    });
+  }
+
   // Health check
   async healthCheck(): Promise<{ status: string; message: string }> {
     return this.request<{ status: string; message: string }>('/health');

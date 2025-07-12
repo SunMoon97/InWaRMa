@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Upload, 
   Search, 
@@ -13,6 +13,7 @@ import {
   Save,
   AlertTriangle
 } from 'lucide-react';
+import apiService from '../services/api';
 
 interface InventoryItem {
   id: string;
@@ -104,6 +105,9 @@ const Inventory: React.FC = () => {
     value: 0
   });
 
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const categories = ['all', 'Dairy', 'Pharmaceuticals', 'Cosmetics', 'Food', 'Personal Care'];
   const statuses = ['all', 'safe', 'warning', 'expired'];
 
@@ -128,6 +132,20 @@ const Inventory: React.FC = () => {
         return null;
     }
   };
+
+  const fetchInventory = async () => {
+    try {
+      const data = await apiService.getInventory();
+      setInventoryData(data);
+    } catch (error) {
+      console.error('Failed to fetch inventory:', error);
+      alert('Failed to load inventory data.');
+    }
+  };
+
+  useEffect(() => {
+    fetchInventory();
+  }, []);
 
   // Button handlers
   const handleExport = () => {
@@ -226,31 +244,88 @@ const Inventory: React.FC = () => {
     setShowUploadModal(true);
   };
 
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      alert('Please select a CSV file');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await apiService.uploadCSV(file);
+      alert(`Successfully uploaded ${response.count} items from CSV`);
+      fetchInventory(); // Refresh the inventory list
+    } catch (error) {
+      alert('Failed to upload CSV file. Please check the file format.');
+      console.error('Upload error:', error);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const downloadTemplate = () => {
+    const csvContent = `name,sku,category,description,unit,batchNumber,quantity,unitPrice,expiryDate,location
+Milk,MLK001,Dairy,Fresh whole milk,L,MLK001-B001,100,2.50,2024-02-15,Warehouse A
+Yogurt,YOG001,Dairy,Natural yogurt,L,YOG001-B001,50,3.00,2024-02-10,Warehouse A
+Aspirin,ASP001,Pharmaceuticals,Pain relief tablets,box,ASP001-B001,200,5.00,2025-12-31,Warehouse B
+Shampoo,SHP001,Personal Care,Hair care shampoo,bottle,SHP001-B001,75,8.50,2024-06-30,Warehouse C`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
-          <p className="text-gray-600">Manage and monitor your warehouse inventory</p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
-          <button 
-            onClick={handleExport}
-            className="btn-secondary flex items-center"
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
+        <div className="flex gap-3">
+          <button
+            onClick={downloadTemplate}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
           >
-            <Download className="h-4 w-4 mr-2" />
-            Export
+            Download Template
           </button>
-          <button 
-            onClick={handleAddItem}
-            className="btn-primary flex items-center"
+          <button
+            onClick={handleUploadClick}
+            disabled={isUploading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            {isUploading ? 'Uploading...' : 'Upload CSV'}
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
             Add Item
           </button>
         </div>
       </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept=".csv"
+        style={{ display: 'none' }}
+      />
 
       {/* Upload Section */}
       <div className="card">
