@@ -1,0 +1,631 @@
+import React, { useState } from 'react';
+import { 
+  Upload, 
+  Search, 
+  Filter, 
+  Download, 
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
+  Package,
+  XCircle,
+  Save,
+  AlertTriangle
+} from 'lucide-react';
+
+interface InventoryItem {
+  id: string;
+  productName: string;
+  category: string;
+  sku: string;
+  quantity: number;
+  expiryDate: string;
+  warehouse: string;
+  status: 'safe' | 'warning' | 'expired';
+  value: number;
+}
+
+const Inventory: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [inventoryData, setInventoryData] = useState<InventoryItem[]>([
+    {
+      id: '1',
+      productName: 'Organic Milk',
+      category: 'Dairy',
+      sku: 'MILK-001',
+      quantity: 150,
+      expiryDate: '2024-01-15',
+      warehouse: 'Warehouse A',
+      status: 'expired',
+      value: 450
+    },
+    {
+      id: '2',
+      productName: 'Vitamin C Tablets',
+      category: 'Pharmaceuticals',
+      sku: 'VIT-002',
+      quantity: 75,
+      expiryDate: '2024-01-18',
+      warehouse: 'Warehouse B',
+      status: 'warning',
+      value: 225
+    },
+    {
+      id: '3',
+      productName: 'Face Cream',
+      category: 'Cosmetics',
+      sku: 'COS-003',
+      quantity: 200,
+      expiryDate: '2024-01-20',
+      warehouse: 'Warehouse C',
+      status: 'warning',
+      value: 800
+    },
+    {
+      id: '4',
+      productName: 'Cereal Box',
+      category: 'Food',
+      sku: 'CER-004',
+      quantity: 300,
+      expiryDate: '2024-02-15',
+      warehouse: 'Warehouse A',
+      status: 'safe',
+      value: 900
+    },
+    {
+      id: '5',
+      productName: 'Toothpaste',
+      category: 'Personal Care',
+      sku: 'PERS-005',
+      quantity: 120,
+      expiryDate: '2024-01-25',
+      warehouse: 'Warehouse B',
+      status: 'warning',
+      value: 360
+    }
+  ]);
+
+  const [newItem, setNewItem] = useState<Omit<InventoryItem, 'id'>>({
+    productName: '',
+    category: '',
+    sku: '',
+    quantity: 0,
+    expiryDate: '',
+    warehouse: '',
+    status: 'safe',
+    value: 0
+  });
+
+  const categories = ['all', 'Dairy', 'Pharmaceuticals', 'Cosmetics', 'Food', 'Personal Care'];
+  const statuses = ['all', 'safe', 'warning', 'expired'];
+
+  const filteredData = inventoryData.filter(item => {
+    const matchesSearch = item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
+    
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'expired':
+        return <span className="status-expired">Expired</span>;
+      case 'warning':
+        return <span className="status-warning">Warning</span>;
+      case 'safe':
+        return <span className="status-safe">Safe</span>;
+      default:
+        return null;
+    }
+  };
+
+  // Button handlers
+  const handleExport = () => {
+    const csvData = [
+      ['Product Name', 'Category', 'SKU', 'Quantity', 'Expiry Date', 'Warehouse', 'Status', 'Value'],
+      ...filteredData.map(item => [
+        item.productName,
+        item.category,
+        item.sku,
+        item.quantity.toString(),
+        item.expiryDate,
+        item.warehouse,
+        item.status,
+        `$${item.value}`
+      ])
+    ];
+    
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory-export.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleAddItem = () => {
+    setShowAddModal(true);
+    setNewItem({
+      productName: '',
+      category: '',
+      sku: '',
+      quantity: 0,
+      expiryDate: '',
+      warehouse: '',
+      status: 'safe',
+      value: 0
+    });
+  };
+
+  const handleSaveItem = () => {
+    if (showAddModal) {
+      const newId = (inventoryData.length + 1).toString();
+      setInventoryData([...inventoryData, { ...newItem, id: newId }]);
+      setShowAddModal(false);
+    } else if (showEditModal && selectedItem) {
+      setInventoryData(inventoryData.map(item => 
+        item.id === selectedItem.id ? { ...newItem, id: selectedItem.id } : item
+      ));
+      setShowEditModal(false);
+      setSelectedItem(null);
+    }
+  };
+
+  const handleEditItem = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setNewItem(item);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteItem = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedItem) {
+      setInventoryData(inventoryData.filter(item => item.id !== selectedItem.id));
+      setShowDeleteModal(false);
+      setSelectedItem(null);
+    }
+  };
+
+  const handleViewItem = (item: InventoryItem) => {
+    alert(`Viewing details for ${item.productName}\nSKU: ${item.sku}\nQuantity: ${item.quantity}\nExpiry: ${item.expiryDate}\nWarehouse: ${item.warehouse}\nValue: $${item.value}`);
+  };
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      ['Product Name', 'Category', 'SKU', 'Quantity', 'Expiry Date', 'Warehouse', 'Unit Price'],
+      ['Sample Product', 'FMCG', 'SAMPLE001', '100', '2024-12-31', 'Warehouse A', '10.50'],
+    ];
+    
+    const csvContent = templateData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory-template.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleUploadInventory = () => {
+    setShowUploadModal(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Inventory Management</h1>
+          <p className="text-gray-600">Manage and monitor your warehouse inventory</p>
+        </div>
+        <div className="mt-4 sm:mt-0 flex space-x-3">
+          <button 
+            onClick={handleExport}
+            className="btn-secondary flex items-center"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </button>
+          <button 
+            onClick={handleAddItem}
+            className="btn-primary flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Item
+          </button>
+        </div>
+      </div>
+
+      {/* Upload Section */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Upload Inventory</h3>
+          <button 
+            onClick={handleDownloadTemplate}
+            className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+          >
+            Download Template
+          </button>
+        </div>
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+          <div className="mt-4">
+            <p className="text-sm text-gray-600">
+              Drag and drop your CSV file here, or{' '}
+              <button 
+                onClick={handleUploadInventory}
+                className="text-primary-600 hover:text-primary-700 font-medium"
+              >
+                browse
+              </button>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Supports CSV files with columns: Product Name, Category, SKU, Quantity, Expiry Date, Warehouse
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search products or SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+          </div>
+          <div className="sm:w-48">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="input-field"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category === 'all' ? 'All Categories' : category}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sm:w-48">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="input-field"
+            >
+              {statuses.map(status => (
+                <option key={status} value={status}>
+                  {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Inventory Table */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Inventory Items</h3>
+          <span className="text-sm text-gray-500">{filteredData.length} items</span>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quantity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Expiry Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Value
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredData.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{item.productName}</div>
+                      <div className="text-sm text-gray-500">{item.sku}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.category}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.quantity}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {item.expiryDate}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(item.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    ${item.value}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex items-center justify-end space-x-2">
+                      <button 
+                        onClick={() => handleViewItem(item)}
+                        className="text-primary-600 hover:text-primary-900"
+                        title="View Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleEditItem(item)}
+                        className="text-gray-600 hover:text-gray-900"
+                        title="Edit Item"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteItem(item)}
+                        className="text-danger-600 hover:text-danger-900"
+                        title="Delete Item"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredData.length === 0 && (
+          <div className="text-center py-8">
+            <Package className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No items found</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Try adjusting your search or filter criteria.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
+      {(showAddModal || showEditModal) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                {showAddModal ? 'Add New Item' : 'Edit Item'}
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowEditModal(false);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  value={newItem.productName}
+                  onChange={(e) => setNewItem({...newItem, productName: e.target.value})}
+                  className="input-field"
+                  placeholder="Enter product name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={newItem.category}
+                  onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                  className="input-field"
+                >
+                  <option value="">Select category</option>
+                  {categories.filter(cat => cat !== 'all').map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SKU</label>
+                <input
+                  type="text"
+                  value={newItem.sku}
+                  onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
+                  className="input-field"
+                  placeholder="Enter SKU"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    value={newItem.quantity}
+                    onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
+                    className="input-field"
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+                  <input
+                    type="number"
+                    value={newItem.value}
+                    onChange={(e) => setNewItem({...newItem, value: parseFloat(e.target.value) || 0})}
+                    className="input-field"
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                <input
+                  type="date"
+                  value={newItem.expiryDate}
+                  onChange={(e) => setNewItem({...newItem, expiryDate: e.target.value})}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Warehouse</label>
+                <input
+                  type="text"
+                  value={newItem.warehouse}
+                  onChange={(e) => setNewItem({...newItem, warehouse: e.target.value})}
+                  className="input-field"
+                  placeholder="Enter warehouse"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex space-x-3">
+              <button 
+                onClick={() => {
+                  setShowAddModal(false);
+                  setShowEditModal(false);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveItem}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 flex items-center justify-center"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {showAddModal ? 'Add Item' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && selectedItem && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-danger-500 mr-3" />
+              <h3 className="text-lg font-medium text-gray-900">Delete Item</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete "{selectedItem.productName}"? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmDelete}
+                className="flex-1 px-4 py-2 bg-danger-600 text-white rounded-md hover:bg-danger-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Upload Inventory</h3>
+              <button 
+                onClick={() => setShowUploadModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+              <Upload className="mx-auto h-12 w-12 text-gray-400" />
+              <div className="mt-4">
+                <p className="text-sm text-gray-600">
+                  Drag and drop your CSV file here, or{' '}
+                  <button className="text-primary-600 hover:text-primary-700 font-medium">
+                    browse
+                  </button>
+                </p>
+                <button 
+                  onClick={handleDownloadTemplate}
+                  className="mt-2 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                >
+                  Download Template
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 flex space-x-3">
+              <button 
+                onClick={() => setShowUploadModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  alert('Upload functionality would be implemented here');
+                  setShowUploadModal(false);
+                }}
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+              >
+                Upload
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Inventory; 
