@@ -13,18 +13,27 @@ import {
   Save,
   AlertTriangle
 } from 'lucide-react';
-import apiService from '../services/api';
+import { apiService } from '../services/api';
 
 interface InventoryItem {
   id: string;
-  productName: string;
-  category: string;
-  sku: string;
+  productId: string;
+  batchNumber?: string;
   quantity: number;
+  unitPrice: number;
   expiryDate: string;
-  warehouse: string;
-  status: 'safe' | 'warning' | 'expired';
-  value: number;
+  location: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'DISPOSED' | 'RESERVED';
+  createdAt: string;
+  updatedAt: string;
+  product: {
+    id: string;
+    name: string;
+    sku: string;
+    category: string;
+    description?: string;
+    unit: string;
+  };
 }
 
 const Inventory: React.FC = () => {
@@ -39,58 +48,63 @@ const Inventory: React.FC = () => {
   const [inventoryData, setInventoryData] = useState<InventoryItem[]>([
     {
       id: '1',
-      productName: 'Organic Milk',
-      category: 'Dairy',
-      sku: 'MILK-001',
+      productId: '1',
+      batchNumber: 'MILK-001-B001',
       quantity: 150,
-      expiryDate: '2024-01-15',
-      warehouse: 'Warehouse A',
-      status: 'expired',
-      value: 450
+      unitPrice: 2.50,
+      expiryDate: '2024-02-15',
+      location: 'Warehouse A',
+      status: 'ACTIVE',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      product: {
+        id: '1',
+        name: 'Organic Milk',
+        sku: 'MILK001',
+        category: 'Dairy',
+        description: 'Fresh organic whole milk',
+        unit: 'L'
+      }
     },
     {
       id: '2',
-      productName: 'Vitamin C Tablets',
-      category: 'Pharmaceuticals',
-      sku: 'VIT-002',
+      productId: '2',
+      batchNumber: 'YOG-002-B001',
       quantity: 75,
-      expiryDate: '2024-01-18',
-      warehouse: 'Warehouse B',
-      status: 'warning',
-      value: 225
+      unitPrice: 3.00,
+      expiryDate: '2024-02-10',
+      location: 'Warehouse A',
+      status: 'ACTIVE',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      product: {
+        id: '2',
+        name: 'Greek Yogurt',
+        sku: 'YOG001',
+        category: 'Dairy',
+        description: 'Natural Greek yogurt',
+        unit: 'L'
+      }
     },
     {
       id: '3',
-      productName: 'Face Cream',
-      category: 'Cosmetics',
-      sku: 'COS-003',
+      productId: '3',
+      batchNumber: 'MED-003-B001',
       quantity: 200,
-      expiryDate: '2024-01-20',
-      warehouse: 'Warehouse C',
-      status: 'warning',
-      value: 800
-    },
-    {
-      id: '4',
-      productName: 'Cereal Box',
-      category: 'Food',
-      sku: 'CER-004',
-      quantity: 300,
-      expiryDate: '2024-02-15',
-      warehouse: 'Warehouse A',
-      status: 'safe',
-      value: 900
-    },
-    {
-      id: '5',
-      productName: 'Toothpaste',
-      category: 'Personal Care',
-      sku: 'PERS-005',
-      quantity: 120,
-      expiryDate: '2024-01-25',
-      warehouse: 'Warehouse B',
-      status: 'warning',
-      value: 360
+      unitPrice: 5.00,
+      expiryDate: '2025-12-31',
+      location: 'Warehouse B',
+      status: 'ACTIVE',
+      createdAt: '2024-01-01',
+      updatedAt: '2024-01-01',
+      product: {
+        id: '3',
+        name: 'Aspirin 500mg',
+        sku: 'ASP001',
+        category: 'Pharmaceuticals',
+        description: 'Pain relief tablets',
+        unit: 'box'
+      }
     }
   ]);
 
@@ -111,10 +125,10 @@ const Inventory: React.FC = () => {
   const categories = ['all', 'Dairy', 'Pharmaceuticals', 'Cosmetics', 'Food', 'Personal Care'];
   const statuses = ['all', 'safe', 'warning', 'expired'];
 
-  const filteredData = inventoryData.filter(item => {
-    const matchesSearch = item.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+  const filteredData = (inventoryData || []).filter(item => {
+    const matchesSearch = (item.product?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (item.product?.sku || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || item.product?.category === selectedCategory;
     const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
     
     return matchesSearch && matchesCategory && matchesStatus;
