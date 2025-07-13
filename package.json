@@ -4,6 +4,7 @@
     "multer": "^2.0.1"
   },
   "devDependencies": {
-    "@types/multer": "^2.0.0"
+    "@types/multer": "^2.0.0",
+    "ts-node": "^10.9.2"
   }
 }

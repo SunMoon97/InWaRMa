@@ -69,31 +69,31 @@ export class MultiArmedBanditSystem {
     switch (armType) {
       case 'conservative':
         return {
-          safetyStock: 0.2,
-          reorderPoint: 0.3,
+          safetyStock: 0.3,
+          reorderPoint: 0.4,
           leadTimeBuffer: 1.5,
-          demandMultiplier: 0.8
+          demandMultiplier: 1.1
         };
       case 'aggressive':
         return {
-          safetyStock: 0.05,
-          reorderPoint: 0.1,
+          safetyStock: 0.1,
+          reorderPoint: 0.2,
           leadTimeBuffer: 1.0,
-          demandMultiplier: 1.2
+          demandMultiplier: 1.3
         };
       case 'balanced':
         return {
-          safetyStock: 0.1,
-          reorderPoint: 0.2,
+          safetyStock: 0.2,
+          reorderPoint: 0.3,
           leadTimeBuffer: 1.2,
-          demandMultiplier: 1.0
+          demandMultiplier: 1.2
         };
       case 'seasonal':
         return {
-          safetyStock: 0.15,
-          reorderPoint: 0.25,
+          safetyStock: 0.25,
+          reorderPoint: 0.35,
           leadTimeBuffer: 1.3,
-          demandMultiplier: 1.1,
+          demandMultiplier: 1.15,
           seasonalAdjustment: true
         };
       default:
@@ -118,12 +118,20 @@ export class MultiArmedBanditSystem {
     if (Math.random() < this.explorationRate) {
       // Exploration: choose random arm
       const randomIndex = Math.floor(Math.random() * arms.length);
-      return arms[randomIndex];
+      const selectedArm = arms[randomIndex];
+      return {
+        ...selectedArm,
+        rewardHistory: selectedArm.rewardHistory as number[] || []
+      };
     } else {
       // Exploitation: choose best arm
-      return arms.reduce((best, current) => 
+      const bestArm = arms.reduce((best, current) => 
         current.averageReward > best.averageReward ? current : best
       );
+      return {
+        ...bestArm,
+        rewardHistory: bestArm.rewardHistory as number[] || []
+      };
     }
   }
 
@@ -239,12 +247,25 @@ export class PolynomialRegressionPredictor {
     forecastDate: Date
   ): Promise<{ predictedDemand: number; confidence: number }> {
     try {
-      const model = await this.trainModel(productId);
       const orderHistory = await this.prisma.orderHistory.findMany({
         where: { productId },
         orderBy: { orderDate: 'asc' }
       });
 
+      // If no order history, use fallback
+      if (orderHistory.length === 0) {
+        console.log(`No order history for product ${productId}, using fallback`);
+        return this.fallbackPrediction(productId);
+      }
+
+      // If insufficient data for polynomial regression, use fallback
+      if (orderHistory.length < this.degree + 1) {
+        console.log(`Insufficient data for polynomial regression (${orderHistory.length} < ${this.degree + 1}), using fallback`);
+        return this.fallbackPrediction(productId);
+      }
+
+      const model = await this.trainModel(productId);
+      
       const nextTimeStep = orderHistory.length;
       const seasonalFeature = this.getSeasonalFeature(forecastDate);
       const trendFeature = this.calculateTrend(orderHistory, nextTimeStep);
@@ -252,14 +273,27 @@ export class PolynomialRegressionPredictor {
       const features = [nextTimeStep, seasonalFeature, trendFeature];
       const predictedDemand = model.predict(features);
 
+      // Check for NaN or invalid values
+      if (isNaN(predictedDemand) || !isFinite(predictedDemand)) {
+        console.log(`Invalid prediction from polynomial regression: ${predictedDemand}, using fallback`);
+        return this.fallbackPrediction(productId);
+      }
+
       // Calculate confidence based on model fit
       const confidence = this.calculateConfidence(model, orderHistory);
+
+      // Check for NaN confidence
+      if (isNaN(confidence) || !isFinite(confidence)) {
+        console.log(`Invalid confidence from polynomial regression: ${confidence}, using fallback`);
+        return this.fallbackPrediction(productId);
+      }
 
       return {
         predictedDemand: Math.max(0, predictedDemand),
         confidence: Math.min(1, Math.max(0, confidence))
       };
     } catch (error) {
+      console.log(`Error in polynomial regression: ${error}, using fallback`);
       // Fallback to simple moving average
       return this.fallbackPrediction(productId);
     }
@@ -301,7 +335,10 @@ export class PolynomialRegressionPredictor {
     const predictions = data.map((_, i) => model.predict([i]));
     const actuals = data.map(d => d.actualDemand);
     
-    const mse = ss.meanSquaredError(actuals, predictions);
+    // Calculate MSE manually since simple-statistics doesn't have meanSquaredError
+    const squaredErrors = predictions.map((pred, i) => Math.pow(pred - actuals[i], 2));
+    const mse = squaredErrors.reduce((sum, error) => sum + error, 0) / squaredErrors.length;
+    
     const maxDemand = Math.max(...actuals);
     const normalizedMse = mse / (maxDemand * maxDemand);
     
@@ -319,13 +356,44 @@ export class PolynomialRegressionPredictor {
     });
 
     if (orderHistory.length === 0) {
-      return { predictedDemand: 0, confidence: 0 };
+      // No order history - return a reasonable default based on product type
+      const product = await this.prisma.product.findUnique({
+        where: { id: productId }
+      });
+      
+      // Default demand based on product category
+      let defaultDemand = 100; // Default value
+      if (product) {
+        switch (product.category.toLowerCase()) {
+          case 'dairy':
+            defaultDemand = 50;
+            break;
+          case 'pharmaceuticals':
+            defaultDemand = 25;
+            break;
+          case 'personal care':
+            defaultDemand = 30;
+            break;
+          case 'food':
+            defaultDemand = 75;
+            break;
+          default:
+            defaultDemand = 50;
+        }
+      }
+      
+      console.log(`No order history for product ${productId}, using default demand: ${defaultDemand}`);
+      return { predictedDemand: defaultDemand, confidence: 0.3 }; // Low confidence for default
     }
 
     const avgDemand = ss.mean(orderHistory.map(o => o.actualDemand));
     const confidence = 0.5; // Low confidence for fallback
 
-    return { predictedDemand: avgDemand, confidence };
+    // Ensure we don't return NaN
+    const safeAvgDemand = isNaN(avgDemand) || !isFinite(avgDemand) ? 50 : avgDemand;
+    
+    console.log(`Using fallback prediction: ${safeAvgDemand} with confidence ${confidence}`);
+    return { predictedDemand: safeAvgDemand, confidence };
   }
 }
 
@@ -348,6 +416,10 @@ export class HybridPredictor {
     currentInventory: number,
     leadTime: number = 14
   ): Promise<OrderPrediction> {
+    console.log(`\n=== PREDICTION DEBUG for product ${productId} ===`);
+    console.log(`Current inventory: ${currentInventory}`);
+    console.log(`Lead time: ${leadTime} days`);
+
     // Get polynomial regression prediction
     const forecastDate = new Date(Date.now() + leadTime * 24 * 60 * 60 * 1000);
     const polynomialPrediction = await this.polynomialPredictor.predictDemand(
@@ -355,21 +427,48 @@ export class HybridPredictor {
       forecastDate
     );
 
+    console.log(`Polynomial prediction:`, polynomialPrediction);
+
     // Get bandit arm recommendation
     const selectedArm = await this.banditSystem.selectArm(productId);
     const armParameters = selectedArm.parameters as any;
+
+    console.log(`Selected arm: ${selectedArm.armType}`);
+    console.log(`Arm parameters:`, armParameters);
 
     // Combine predictions
     const baseDemand = polynomialPrediction.predictedDemand;
     const adjustedDemand = baseDemand * armParameters.demandMultiplier;
     
+    console.log(`Base demand: ${baseDemand}`);
+    console.log(`Adjusted demand: ${adjustedDemand}`);
+    
     // Calculate safety stock and reorder point
     const safetyStock = adjustedDemand * armParameters.safetyStock;
     const reorderPoint = adjustedDemand * armParameters.reorderPoint;
     
-    // Determine order quantity
+    console.log(`Safety stock: ${safetyStock}`);
+    console.log(`Reorder point: ${reorderPoint}`);
+    
+    // Determine order quantity - modified logic
     const targetInventory = adjustedDemand + safetyStock;
-    const orderQuantity = Math.max(0, targetInventory - currentInventory);
+    const reorderLevel = reorderPoint + safetyStock;
+    
+    // Only order if current inventory is below reorder level
+    let orderQuantity = 0;
+    if (currentInventory < reorderLevel) {
+      orderQuantity = Math.max(0, targetInventory - currentInventory);
+    }
+    
+    // If current inventory is very low, order at least some minimum amount
+    if (currentInventory < safetyStock && orderQuantity === 0) {
+      orderQuantity = Math.max(10, adjustedDemand * 0.5); // At least 10 units or half the demand
+    }
+
+    console.log(`Target inventory: ${targetInventory}`);
+    console.log(`Reorder level: ${reorderLevel}`);
+    console.log(`Current inventory: ${currentInventory}`);
+    console.log(`Order quantity: ${orderQuantity}`);
 
     // Calculate order date
     const orderDate = new Date(Date.now() + leadTime * armParameters.leadTimeBuffer * 24 * 60 * 60 * 1000);
@@ -377,6 +476,14 @@ export class HybridPredictor {
     // Calculate confidence (weighted average)
     const banditConfidence = 0.8; // High confidence for bandit
     const hybridConfidence = (polynomialPrediction.confidence + banditConfidence) / 2;
+
+    console.log(`Final prediction:`, {
+      predictedQuantity: orderQuantity,
+      predictedOrderDate: orderDate,
+      confidence: hybridConfidence,
+      algorithm: 'hybrid'
+    });
+    console.log(`=== END PREDICTION DEBUG ===\n`);
 
     return {
       predictedQuantity: orderQuantity,

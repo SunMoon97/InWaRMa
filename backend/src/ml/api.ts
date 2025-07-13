@@ -34,6 +34,23 @@ router.get('/predict/:productId', async (req, res) => {
       Number(leadTime)
     );
 
+    // Validate prediction values before storing
+    if (isNaN(prediction.predictedQuantity) || !isFinite(prediction.predictedQuantity)) {
+      console.error('Invalid predicted quantity:', prediction.predictedQuantity);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Invalid prediction generated - predicted quantity is NaN or infinite'
+      });
+    }
+
+    if (isNaN(prediction.confidence) || !isFinite(prediction.confidence)) {
+      console.error('Invalid confidence:', prediction.confidence);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Invalid prediction generated - confidence is NaN or infinite'
+      });
+    }
+
     // Store prediction
     await prisma.orderPrediction.create({
       data: {

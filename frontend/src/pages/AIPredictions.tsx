@@ -194,7 +194,9 @@ const AIPredictions: React.FC = () => {
             prediction: prediction.predictedQuantity,
             actual: Math.round(actualDemand),
             arm: prediction.features?.banditArm,
-            accuracy: Math.round((1 - Math.abs(prediction.predictedQuantity - actualDemand) / actualDemand) * 100)
+            accuracy: actualDemand > 0
+              ? Math.round((1 - Math.abs(prediction.predictedQuantity - actualDemand) / actualDemand) * 100)
+              : 0
           });
         }
         
@@ -508,66 +510,63 @@ const AIPredictions: React.FC = () => {
 
       {/* Simulation Modal */}
       {showSimulationModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full p-6 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <Play className="mr-2 h-5 w-5 text-green-600" />
+        <div className="fixed inset-0 bg-gradient-to-br from-blue-100 via-white to-green-100 bg-opacity-80 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-8 max-h-[80vh] overflow-y-auto border border-blue-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-extrabold text-blue-800 flex items-center gap-2 tracking-tight">
+                <Play className="h-7 w-7 text-green-500 animate-pulse" />
                 Bandit Learning Simulation
               </h3>
               <button
                 onClick={() => setShowSimulationModal(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <XCircle className="h-5 w-5" />
+                <XCircle className="h-6 w-6" />
               </button>
             </div>
-            
-            <div className="mb-4">
-              <p className="text-gray-600 mb-4">
-                This simulation will run 10 rounds of predictions and outcomes to demonstrate how the multi-armed bandit learns and adapts.
+            <div className="mb-6">
+              <p className="text-gray-700 mb-4 text-lg">
+                This simulation will run <span className="font-bold text-blue-700">10 rounds</span> of predictions and outcomes to demonstrate how the multi-armed bandit learns and adapts.
               </p>
               <button
                 onClick={runSimulation}
                 disabled={isLoading}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center"
+                className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-6 py-3 rounded-xl shadow hover:from-green-600 hover:to-blue-600 disabled:opacity-50 flex items-center font-semibold text-lg transition"
               >
                 {isLoading ? (
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
                 ) : (
-                  <Play className="mr-2 h-4 w-4" />
+                  <Play className="mr-2 h-5 w-5" />
                 )}
                 {isLoading ? 'Running Simulation...' : 'Start Simulation'}
               </button>
             </div>
 
             {simulationResults.length > 0 && (
-              <div className="mt-6">
-                <h4 className="text-md font-semibold text-gray-900 mb-3">Simulation Results:</h4>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+              <div className="mt-8">
+                <h4 className="text-lg font-bold text-gray-900 mb-4">Simulation Results:</h4>
+                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                  <table className="min-w-full divide-y divide-gray-200 bg-white">
+                    <thead className="bg-gradient-to-r from-blue-50 to-green-50">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Round</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Arm Used</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Predicted</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Actual</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Accuracy</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Round</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Arm Used</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Predicted</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Actual</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Accuracy</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-gray-100">
                       {simulationResults.map((result) => (
-                        <tr key={result.round} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-sm text-gray-900">{result.round}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getArmTypeColor(result.arm)}`}>
-                              {result.arm}
-                            </span>
+                        <tr key={result.round} className="hover:bg-blue-50/40 transition">
+                          <td className="px-4 py-3 text-sm text-gray-900 font-semibold">{result.round}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold shadow-sm ${getArmTypeColor(result.arm)}`}>{result.arm}</span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{result.prediction.toFixed(0)}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">{result.actual}</td>
-                          <td className="px-4 py-2 text-sm text-gray-900">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          <td className="px-4 py-3 text-sm text-blue-800 font-bold">{result.prediction.toFixed(0)}</td>
+                          <td className="px-4 py-3 text-sm text-green-800 font-bold">{result.actual}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-bold shadow-sm ${
                               result.accuracy >= 80 ? 'bg-green-100 text-green-800' :
                               result.accuracy >= 60 ? 'bg-yellow-100 text-yellow-800' :
                               'bg-red-100 text-red-800'
@@ -580,7 +579,7 @@ const AIPredictions: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-xl border border-blue-100">
                   <p className="text-sm text-blue-800">
                     <strong>Note:</strong> After running the simulation, check the Multi-Armed Bandit section above to see how the arms' performance metrics have updated!
                   </p>

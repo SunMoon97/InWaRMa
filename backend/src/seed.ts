@@ -162,7 +162,69 @@ async function main() {
     });
   }
 
+  // Create sample order history for ML predictions
+  console.log('📊 Creating sample order history for ML...');
+  for (const product of allProducts) {
+    // Create 12 weeks of order history
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() - 84); // Start 12 weeks ago
+
+    for (let i = 0; i < 12; i++) {
+      const orderDate = new Date(baseDate);
+      orderDate.setDate(orderDate.getDate() + i * 7); // Weekly orders
+
+      // Generate realistic demand based on product category
+      let baseDemand = 50;
+      switch (product.category.toLowerCase()) {
+        case 'dairy':
+          baseDemand = 30 + Math.random() * 40; // 30-70 units
+          break;
+        case 'pharmaceuticals':
+          baseDemand = 15 + Math.random() * 20; // 15-35 units
+          break;
+        case 'personal care':
+          baseDemand = 20 + Math.random() * 25; // 20-45 units
+          break;
+        case 'food':
+          baseDemand = 40 + Math.random() * 50; // 40-90 units
+          break;
+        default:
+          baseDemand = 30 + Math.random() * 30; // 30-60 units
+      }
+
+      // Add some seasonal variation
+      const seasonalAdjustment = 1 + 0.3 * Math.sin((i / 12) * 2 * Math.PI);
+      const actualDemand = Math.round(baseDemand * seasonalAdjustment);
+
+      // Add some randomness to order quantity (prediction error)
+      const orderQuantity = Math.round(actualDemand * (0.8 + Math.random() * 0.4));
+
+      await prisma.orderHistory.create({
+        data: {
+          productId: product.id,
+          orderDate,
+          orderQuantity,
+          actualDemand,
+          leadTime: 14,
+          cost: actualDemand * 2.5,
+          revenue: actualDemand * 4.0,
+          profit: actualDemand * 1.5,
+          seasonality: getSeasonFromDate(orderDate),
+          externalFactors: {}
+        }
+      });
+    }
+  }
+
   console.log('✅ Database seed completed successfully!');
+}
+
+function getSeasonFromDate(date: Date): string {
+  const month = date.getMonth();
+  if (month >= 2 && month <= 4) return 'spring';
+  if (month >= 5 && month <= 7) return 'summer';
+  if (month >= 8 && month <= 10) return 'fall';
+  return 'winter';
 }
 
 main()
